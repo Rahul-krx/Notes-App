@@ -18,10 +18,13 @@ app.set('layout', './layouts/main');
 app.set('view engine', 'ejs');
 
 // routes
+app.use('/', require('./server/routes/index'));
 
-app.get('/', (req, res) => {
-    res.render('index');
-});
+// error handling middleware
+app.get('*', function(req, res){
+   res.status(404).render('404.ejs');
+})
+
 
 app.listen(port, () =>{
     console.log(`Server running on port ${port}`);
