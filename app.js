@@ -34,12 +34,12 @@ connectDB();
 
 app.use(express.static('public'));
 
-// Templating engine
+// Templating engine code
 app.use(expressLayouts);
 app.set('layout', './layouts/main');
 app.set('view engine', 'ejs');
   
-// routes
+// routes code
 app.use('/', require('./server/routes/auth'));
 app.use('/', require('./server/routes/index'));
 app.use('/', require('./server/routes/dashboard'));
