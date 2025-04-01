@@ -47,7 +47,7 @@ app.use('/', require('./server/routes/dashboard'));
 // error handling middleware
 app.get('*', function(req, res){
    res.status(404).render('404.ejs');
-})
+});
 
 
 app.listen(port, () =>{
