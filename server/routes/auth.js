@@ -1,77 +1,103 @@
-const express = require('express');
+const express = require("express");
+require('dotenv').config();
 const router = express.Router();
-const passport = require('passport');
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const User = require("../models/User");
 
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: process.env.GOOGLE_CALLBACK_URI,
+    },
+    async function (accessToken, refreshToken, profile, done) {
+      const newUser = {
+        googleId: profile.id,
+        displayName: profile.displayName,
+        firstName: profile.name.givenName,
+        lastName: profile.name.familyName,
+        email: profile.emails?.[0]?.value || '',
+        profileImage: profile.photos[0].value,
+       
 
-const User = require('../models/User')
+      };
 
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URI
-},
-    async function (accessToken, refreshToken, profile, dotenv) {
-
-        const newUser = {
-            googleId: profile.id,
-            displayName: profile.displayName,
-            firstName: profile.name.givenName,
-            lastName: profile.name.familyName,
-            profileImage: profile.photos[0].value
-            // email: profile.emails[0].value
+      try {
+        let user = await User.findOne({ googleId: profile.id });
+        if (user) {
+          done(null, user);
+        } else {
+          user = await User.create(newUser);
+          done(null, user);
         }
-        try {
-            let user = await User.findOne({ googleId: profile.id });
-            if (user) {
-                done(null, user);
-            } else {
-                user = await User.create(newUser);
-                done(null, user);
-            }
-
-        } catch (error) {
-            console.log('Error creating/finding user');
-        }
+      } catch (error) {
+        console.log(error);
+      }
     }
-));
-
-
-router.get('/auth/google',
-    passport.authenticate('google', { scope: ['email', 'profile'] }));
-
-router.get('/google/callback',
-    passport.authenticate('google', {
-        failureRedirect: '/login-failure',
-        successRedirect: '/dashboard'
-
-
-    }),
+  )
 );
+
+// Google Login Route
+
+
+
+ router.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["email", "profile"] })
+);
+
+// Retrieve user data
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login-failure",
+    successRedirect: "/dashboard",
+  })
+);
+
+// Route if something goes wrong
 router.get('/login-failure', (req, res) => {
-    res.send('Failed to authenticate with Google');
+  res.send('Something went wrong...');
 });
 
-router.get('/logout', (req, res) =>{
-    req.session.destroy(error =>{
-        if(error){
-            console.log('Error destroying session', error);
-        }
-        else{
-            res.redirect('/');
-        }
-    })
-})
+// Destroy user session
+router.get('/logout', (req, res) => {
+  req.session.destroy(error => {
+    if(error) {
+      console.log(error);
+      res.send('Error loggin out');
+    } else {
+      res.redirect('/')
+    }
+  })
+});
 
+
+// Presist user data after successful authentication
 passport.serializeUser(function (user, done) {
-    done(null, user.id);
+  done(null, user.id);
 });
 
-passport.deserializeUser(function (id, done) {
-    User.findById(id, function (err, user) {
-        done(err, user);
-    });
+// Retrieve user data from session.
+// Original Code
+// passport.deserializeUser(function (id, done) {
+//   User.findById(id, function (err, user) {
+//     done(err, user);
+//   });
+// });
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });
+
+
+
 
 module.exports = router;
-// const express = require('express');
